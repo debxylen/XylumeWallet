@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
+    font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net;
+    img-src 'self' data:;
+    connect-src 'self' https://xylume-testnet.sparked.network/rpc/ https://fonts.googleapis.com https://fonts.gstatic.com;
+    object-src 'none';
+  ">
+  <title>Xylume Wallet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="icon" type="image/jpg" href="./assets/wallet.jpg">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="./scripts/tailwind-config.js"></script>
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1033 50%, #2d1b45 100%);
+      color: #fff;
+      min-height: 100vh;
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+
+    .neon-glow {
+      background: rgba(0, 0, 0, 0.8);
+      transition: all 0.3s ease;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      background-clip: padding-box;
+      padding: 10px;
+      position: relative;
+    }
+
+    .neon-glow:hover::before {
+      content: "";
+      position: absolute;
+      inset: -1px;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(to right, rgba(0, 0, 255, 0.5), rgba(216, 39, 255, 0.5), rgba(255, 0, 0, 0.5));
+      -webkit-mask: linear-gradient(black, black) content-box, linear-gradient(black, black);
+      mask: linear-gradient(black, black) content-box, linear-gradient(black, black);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+
+    .neon-glow:hover {
+      transform: translateY(-2px);
+      transition: all 0.3s ease;
+      border: 1px solid rgba(216, 39, 255, 0.5);
+    }
+
+    .panel-transition {
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .blur-overlay {
+      backdrop-filter: blur(5px);
+      transition: backdrop-filter 0.3s ease;
+    }
+
+    .tab-content {
+      display: none;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .tab-content.active {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .tab-btn-am.active {
+      background-color: #00F0FF;
+      color: black;
+    }
+
+    .tab-content-am {
+      display: none;
+    }
+
+    .tab-content-am.active {
+      display: block;
+    }
+
+    button {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    input,
+    select {
+      transition: all 0.3s ease;
+    }
+
+    input:focus,
+    select:focus {
+      transform: scale(1.01);
+    }
+
+    .hover\:bg-gray-800:hover {
+      transition: background-color 0.3s ease;
+    }
+
+    i[class^="ri-"] {
+      transition: transform 0.3s ease;
+    }
+
+    button:hover i[class^="ri-"] {
+      transform: scale(1.1);
+    }
+
+    .modal-content {
+      animation: modalSlideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      background: #2d1b45;
+      border-radius: 5px;
+      background-image: linear-gradient(#00F0FF, #00F0FF);
+      background-size: 50% 100%;
+      background-repeat: no-repeat;
+      transition: all 0.3s ease;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #00F0FF;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0, 240, 255, 0.5);
+      transition: all 0.3s ease;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      -webkit-appearance: none;
+      box-shadow: none;
+      border: none;
+      background: transparent;
+      transition: all 0.3s ease;
+    }
+
+    @keyframes modalSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .fast-spin {
+      animation: spin 0.25s linear infinite;
+    }
+  </style>
+</head>
+
+<body class="p-6">
+  <div class="max-w-md mx-auto relative">
+    <header class="mb-8">
+      <div class="flex justify-between items-center mb-4">
+        <h1 class="text-2xl font-semibold">Xylume Wallet</h1>
+      </div>
+      <div class="bg-gray-900 rounded-lg p-6 neon-glow relative"
+        style="background: linear-gradient(135deg, rgba(0, 240, 255, 0.1) 0%, rgba(161, 0, 255, 0.1) 100%);">
+        <button id="refreshBalanceBtn"
+          class="absolute top-2 right-2 text-white hover:text-primary transition duration-500 hover:rotate-180">
+          <i class="ri-refresh-line text-xl"></i>
+        </button>
+        <p class="text-gray-400 mb-2">XYL Balance</p>
+        <h2 id="xylBalance" class="text-4xl font-bold mb-2">- XYL</h2>
+        <p id="usdBalance" class="text-primary">$0</p>
+      </div>
+    </header>
+    <div class="bg-gradient-to-br from-gray-900 via-[#1a1033] to-[#2d1b45] rounded-lg p-4 mb-6 neon-glow">
+      <div class="flex gap-4 mb-4">
+        <button
+          class="tab-btn bg-primary text-black active flex-1 py-2 px-4 rounded-full text-center cursor-pointer transition-colors"
+          data-tab="tokens">
+          Tokens
+        </button>
+        <button class="tab-btn flex-1 py-2 px-4 rounded-full text-center cursor-pointer transition-colors"
+          data-tab="transactions">
+          Transactions
+        </button>
+      </div>
+      <div id="tokens" class="tab-content overflow-y-scroll active h-[45vh]">
+        <div id="addTokenWrapper" class="fixed bottom-0 right-0 z-50 w-16 h-16">
+          <button id="addTokenHover" class="absolute inset-0 opacity-0"></button>
+          <button id="addTokenBtn"
+            class="absolute right-[-60px] bottom-0 bg-primary text-black w-12 h-12 rounded-button flex items-center justify-center shadow-xl transition-all duration-300">
+            <i class="ri-add-line text-2xl"></i>
+          </button>
+        </div>
+      </div>
+      <div id="transactions" class="overflow-y-scroll tab-content h-[45vh] max-h-[45vh]">
+        <div class="space-y-4">
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4">
+      <button id="sendBtn"
+        class="flex items-center justify-center gap-2 py-3 px-6 rounded-button bg-primary text-black font-medium hover:opacity-90 transition-opacity cursor-pointer whitespace-nowrap">
+        <i class="ri-send-plane-line"></i>
+        Send
+      </button>
+      <button id="receiveBtn"
+        class="flex items-center justify-center gap-2 py-3 px-6 rounded-button bg-gray-800 text-white font-medium hover:bg-gray-700 transition-colors cursor-pointer whitespace-nowrap">
+        <i class="ri-download-line"></i>
+        Receive
+      </button>
+    </div>
+  </div>
+
+  <div id="addWalletModal"
+    class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[998] flex items-center justify-center">
+    <div class="rounded-lg p-6 max-w-md mx-auto modal-content border border-primary/20 neon-glow" style="background: linear-gradient(
+      to bottom right,
+      rgba(17, 24, 39, 0.75),
+      rgba(26, 16, 51, 0.75),
+      rgba(45, 27, 69, 0.75)
+    );
+    backdrop-filter: blur(12px);
+    ">
+      <div class="text-center mb-6">
+        <h3 class="text-2xl font-semibold text-primary pb-6">Setup Your Wallet</h3>
+        <p class="text-gray-400">Create a new wallet or import an existing one.</p>
+      </div>
+
+      <div class="bg-gray-900/50 rounded-lg p-1 mb-6 flex gap-2">
+        <button class="tab-btn-am flex-1 py-2 px-4 rounded-full text-center cursor-pointer transition-colors active"
+          data-tab="create">Create Wallet</button>
+        <button class="tab-btn-am flex-1 py-2 px-4 rounded-full text-center cursor-pointer transition-colors"
+          data-tab="import">Import Wallet</button>
+      </div>
+
+      <!-- Create Wallet Tab -->
+      <div id="create" class="tab-content-am active">
+        <div class="space-y-4">
+          <div>
+            <label class="block mb-2 text-gray-400">Your Secret Recovery Phrase</label>
+            <div class="relative bg-gray-900 rounded-lg p-4 border border-gray-800">
+              <p id="mnemonicPhrase" class="text-lg tracking-wider leading-relaxed text-center"></p>
+              <button id="copyMnemonic" class="absolute top-2 right-2 text-gray-400 hover:text-primary"><i
+                  class="ri-file-copy-line"></i></button>
+            </div>
+            <p class="text-xs text-secondary mt-2">Write this down somewhere safe. It's the only way to recover your
+              wallet.</p>
+          </div>
+          <button id="generateNewPhrase"
+            class="w-full py-2 rounded-button bg-gray-800 hover:bg-gray-700 text-white font-medium transition-colors">Generate
+            New Phrase</button>
+          <button id="createWalletBtn"
+            class="w-full py-3 rounded-button bg-primary text-black font-medium hover:opacity-90 transition-opacity">I've
+            Saved My Phrase</button>
+        </div>
+      </div>
+
+      <!-- Import Wallet Tab -->
+      <div id="import" class="tab-content-am">
+        <div class="space-y-4">
+          <div>
+            <label class="block mb-2 text-gray-400">Secret Recovery Phrase or Private Key</label>
+            <textarea id="importInput" rows="4" style="resize: none;"
+              class="w-full bg-gray-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary border border-gray-800"
+              placeholder="Enter your 12-word recovery phrase or private key"></textarea>
+          </div>
+          <button id="importWalletBtn"
+            class="w-full py-3 rounded-button bg-primary text-black font-medium hover:opacity-90 transition-opacity">Import
+            Wallet</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="addTokenModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="rounded-lg p-6 w-[480px] modal-content border border-primary/20 neon-glow" style="background: linear-gradient(
+      to bottom right,
+      rgba(17, 24, 39, 0.75),
+      rgba(26, 16, 51, 0.75),
+      rgba(45, 27, 69, 0.75)
+    );
+    backdrop-filter: blur(12px);
+    ">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-semibold text-primary">Add Token</h3>
+        <button
+          class="close-modal w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-900 cursor-pointer">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block mb-2 text-gray-400">Token Address</label>
+          <input type="text" id="newTokenAddress"
+            class="w-full bg-gray-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary border border-gray-800"
+            placeholder="0x...">
+        </div>
+        <div class="flex gap-3">
+          <button id="addTokenCloseBtn"
+            class="flex-1 py-3 rounded-button bg-gray-900 border border-primary text-primary font-medium hover:bg-primary/10 transition-colors cursor-pointer whitespace-nowrap close-modal">Cancel</button>
+          <button id="addTokenConfirmBtn"
+            class="flex-1 py-3 rounded-button bg-primary text-black font-medium hover:opacity-90 transition-opacity cursor-pointer whitespace-nowrap">Preview</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="sendModal" class="hidden fixed inset-0 bg-black/20 backdrop-blur-lg flex items-center justify-center z-50">
+    <div class="rounded-lg p-6 w-[480px] modal-content border border-primary/20 neon-glow" style="background: linear-gradient(
+      to bottom right,
+      rgba(17, 24, 39, 0.75),
+      rgba(26, 16, 51, 0.75),
+      rgba(45, 27, 69, 0.75)
+    );
+    backdrop-filter: blur(12px);
+    ">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-semibold text-primary">Send</h3>
+        <button
+          class="close-modal w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-900 cursor-pointer">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block mb-2 text-gray-400">Recipient Address</label>
+          <input type="text"
+            class="w-full bg-gray-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary border border-gray-800"
+            placeholder="0x...">
+        </div>
+        <div>
+          <label class="block mb-2 text-gray-400">Amount</label>
+          <div class="relative">
+            <input type="text"
+              class="w-full bg-gray-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary border border-gray-800"
+              placeholder="0.0">
+            <div id="tokenSelector"
+              class="absolute right-2 top-1/2 -translate-y-1/2 bg-gray-800 rounded-lg px-2 py-1 border border-gray-700 cursor-pointer flex items-center gap-2">
+              <span id="selectedTokenSymbol">XYL</span>
+              <i class="ri-arrow-down-s-line text-sm"></i>
+            </div>
+
+            <div id="tokenDropdown"
+              class="absolute right-0 mt-2 w-[280px] bg-gray-900 border border-gray-800 rounded-lg shadow-xl z-50 hidden">
+              <!-- dynamic token items go here -->
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-4 border border-gray-800 rounded-lg p-4 bg-gray-900/50">
+          <div>
+            <div class="flex justify-between mb-2">
+              <label class="text-gray-400">Gas Price (WEI)</label>
+              <span id="gasPrice-display" class="text-primary text-sm">Current: <span id="current-gas">
+                  WEI</span></span>
+            </div>
+            <input type="range" id="gas-price-slider" min="1" max="100" value="50" class="w-full">
+            <!-- currently the node allows only gasPrice == 1 wei-->
+            <div class="flex justify-between text-sm mt-1">
+              <span class="text-gray-500">Average</span>
+              <span class="text-gray-500">Fast</span>
+            </div>
+          </div>
+          <div>
+            <label class="block mb-2 text-gray-400">Gas Limit</label>
+            <input type="number" id="gas-limit"
+              class="w-full bg-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary border border-gray-800"
+              placeholder="">
+          </div>
+          <div>
+            <label class="block mb-2 text-gray-400">Nonce</label>
+            <input type="number" id="tx-nonce"
+              class="w-full bg-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary border border-gray-800"
+              placeholder="">
+          </div>
+          <div class="space-y-4 border border-gray-800 rounded-lg p-4 bg-gray-900/50">
+            <div>
+              <label class="block mb-2 text-gray-400">Hex Data (Optional)</label>
+              <textarea style="resize: none;"
+                class="w-full bg-gray-900 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary border border-gray-800 h-20"
+                placeholder="0x"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-3">
+          <button id="cancelTxBtn"
+            class="flex-1 py-3 rounded-button bg-gray-900 border border-primary text-primary font-medium hover:bg-primary/10 transition-colors cursor-pointer whitespace-nowrap close-modal">Cancel</button>
+          <button id="sendTxBtn"
+            class="flex-1 py-3 rounded-button bg-primary text-black font-medium hover:opacity-90 transition-opacity cursor-pointer whitespace-nowrap">Send</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tokenPickerModal"
+    class="hidden fixed inset-0 z-[999] bg-black/50 backdrop-blur-sm flex items-center justify-center">
+    <div
+      class="rounded-lg p-6 modal-content border border-primary/20 neon-glow w-[360px] max-h-[80vh] overflow-y-auto space-y-2"
+      style="background: linear-gradient(
+      to bottom right,
+      rgba(17, 24, 39, 0.75),
+      rgba(26, 16, 51, 0.75),
+      rgba(45, 27, 69, 0.75)
+    );
+    backdrop-filter: blur(12px);
+    ">
+      <h3 class="text-lg font-bold text-primary mb-2">Select Token</h3>
+      <div id="tokenPickerList" class="space-y-2"></div>
+      <button id="closeTokenPicker"
+        class="mt-4 w-full py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white">Cancel</button>
+    </div>
+  </div>
+
+  <div id="receiveModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="rounded-lg p-6 w-96 modal-content border border-primary/20 neon-glow" style="background: linear-gradient(
+      to bottom right,
+      rgba(17, 24, 39, 0.75),
+      rgba(26, 16, 51, 0.75),
+      rgba(45, 27, 69, 0.75)
+    );
+    backdrop-filter: blur(12px);
+    ">
+      <div class="flex justify-between items-center mb-6">
+        <h3 class="text-xl font-semibold">Receive Assets</h3>
+        <button
+          class="close-modal w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800 cursor-pointer">
+          <i class="ri-close-line"></i>
+        </button>
+      </div>
+      <div class="text-center">
+        <canvas id="qrContainer"
+          class="bg-white p-4 rounded-lg mb-4 mx-auto w-48 h-48 flex items-center justify-center">
+      </div>
+      <p class="text-sm text-gray-400 mb-4">Your Wallet Address</p>
+      <div class="flex items-center gap-2 bg-gray-800 rounded-lg p-2 mb-4 neon-glow">
+        <input id="receiveAddress" type="text" class="flex-1 bg-transparent border-none focus:outline-none" value="0x"
+          readonly>
+        <button id="copyAddress" class="p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+          <i class="ri-file-copy-line"></i>
+        </button>
+      </div>
+      <p class="text-sm text-gray-400">Scan QR code or copy address to receive assets</p>
+    </div>
+  </div>
+  </div>
+
+
+  <div id="tokenCtxModal"
+    class="hidden fixed inset-0 z-[999] bg-black/50 backdrop-blur-sm flex items-center justify-center">
+    <div
+      class="rounded-lg p-6 modal-content border border-primary/20 neon-glow w-[360px] max-h-[80vh] overflow-y-auto space-y-2"
+      style="background: linear-gradient(
+      to bottom right,
+      rgba(17, 24, 39, 0.75),
+      rgba(26, 16, 51, 0.75),
+      rgba(45, 27, 69, 0.75)
+    );
+    backdrop-filter: blur(12px);
+    ">
+      <div class="space-y-4">
+        <h3 class="text-lg font-bold text-primary mb-2">Confirm Removal</h3>
+        <p class="text-sm mb-2">This will hide the token from your wallet. You can always add it back later.</p>
+        <div class="flex gap-3">
+          <button id="cancelRemoveBtn"
+            class="flex-1 py-3 close-modal rounded-button bg-gray-900 border border-primary text-primary font-medium hover:bg-primary/10 transition-colors cursor-pointer whitespace-nowrap close-modal">Cancel</button>
+          <button id="removeTokenBtn"
+            class="flex-1 py-3 close-modal rounded-button bg-primary text-black font-medium hover:opacity-90 transition-opacity cursor-pointer whitespace-nowrap">Remove
+            Token</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TO BE IMPLEMENTED -->
+  <!-- <div id="settingsModal" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 
+    w-[24vw] h-[94vh] bg-gradient-to-br from-gray-900 via-[#1a1033] to-[#2d1b45]
+    p-6 overflow-y-none z-50 border border-primary/20 neon-glow" style="transform: translate(-50%, -50%) !important;">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-semibold">Settings</h2>
+      <button id="closeSettings"
+        class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800 cursor-pointer">
+        <i class="ri-close-line"></i>
+      </button>
+    </div>
+    <div class="space-y-6">
+      <div class="space-y-4">
+        <h3 class="text-lg font-medium">Security</h3>
+        <div class="space-y-3">
+          <div class="flex items-center gap-5 justify-between">
+            <span>Private Key</span>
+            <div class="flex items-center gap-2">
+              <input type="password" id="privateKey" value="••••••••••••••••••"
+                class="bg-gray-800 p-2 rounded-md text-white max-w-[7.5vw] text-ellipsis" readonly>
+              <button id="togglePrivateKey"
+                class="px-3 py-1 bg-gray-700 text-white rounded-md hover:bg-gray-600 transition">
+                <i class="ri-eye-line"></i>
+              </button>
+              <button id="copyPrivateKey"
+                class="px-3 py-1 bg-primary text-black rounded-md hover:bg-primary/80 transition">
+                <i class="ri-file-copy-line"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <h3 class="text-lg font-medium">Network & Gas</h3>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <span>Network</span>
+            <select class="bg-gray-800 rounded-lg px-3 py-2 pr-8">
+              <option>Mainnet</option>
+              <option>Testnet</option>
+            </select>
+          </div>
+          <div>
+            <label class="block mb-2">RPC URL</label>
+            <input type="text" id="rpcUrl" class="w-full p-2 rounded-md bg-gray-800 border border-gray-600 text-white"
+              placeholder="Enter RPC URL">
+          </div>
+          <div>
+            <label class="block mb-2">Default Gas Limit</label>
+            <div class="flex items-center gap-4">
+              <input type="range" id="gasLimitSlider" min="21000" max="300000" value="21000"
+                class="w-full accent-primary">
+              <input type="number" id="gasLimitInput" min="21000" max="300000" value="21000"
+                class="w-24 bg-gray-900 text-white text-center border border-gray-700 rounded-md px-2 py-1">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <span>Show Balances</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" class="sr-only peer" checked>
+            <div
+              class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary">
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="space-y-4">
+        <h3 class="text-lg font-medium">Display</h3>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <span>Currency</span>
+            <select class="bg-gray-800 rounded-lg px-3 py-2 pr-8">
+              <option>USD</option>
+              <option>INR</option>
+              <option>GBP</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-between">
+            <span>Show Small Balances</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" class="sr-only peer" checked>
+              <div
+                class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary">
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div> -->
+
+  <!-- Toast -->
+  <div id="toast"
+    class="fixed bottom-4 right-4 bg-black border border-primary rounded-lg p-4 hidden neon-glow z-[1000] min-w-[250px]">
+    <div class="flex justify-between items-start gap-3">
+      <div class="flex items-center gap-3 flex-1">
+        <div>
+          <h4 id="toasth4" class="font-medium"></h4>
+          <p id="toastp" class="text-sm text-gray-400"></p>
+        </div>
+      </div>
+      <button id="toast-close" class="text-gray-500 hover:text-white text-lg leading-none"><i class="ri-close-line"></i></button>
+    </div>
+  </div>
+
+  <!-- Fullscreen loader -->
+  <div id="loaderOverlay"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999] hidden flex items-center justify-center">
+    <div class="flex flex-col items-center gap-3 text-white">
+      <i class="ri-loader-4-line animate-spin text-4xl text-primary"></i>
+      <p class="text-sm text-gray-300"><!-- loader text --></p>
+    </div>
+  </div>
+
+  <script src="./scripts/misc.js" id="miscellaneous"></script>
+  <script src="./scripts/wallet.js" id="main-script"></script>
+  <script src="./scripts/wallet-add.js" id="wallet-add"></script>
+  <script src="./scripts/wallet-send.js" id="wallet-send"></script>
+  <script src="./scripts/wallet-tokens.js" id="wallet-tokens"></script>
+
+</body>
+</html>
